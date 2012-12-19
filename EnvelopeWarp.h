@@ -5,7 +5,7 @@
 #include "SkPath.h"
 #include "SkPathMeasure.h"
 #include "SkPaint.h"
-#include "SkTypeface.h"
+#include "SkTypeFace.h"
 
 #include <string>
 
@@ -19,12 +19,24 @@ namespace TextArt
 		SkPath warp(const std::string& text, SkTypeface* typeface);
 		SkPath warp(const SkPath& path, const SkMatrix& matrix);
 
-	private:
+		void setTopSkeleton(const SkPath& skeleton);
+
+		const SkRect& getBounds() const;
+
+	public:
 		static void morphpoints(SkPoint dst[], const SkPoint src[], int count, SkPathMeasure& meas, const SkMatrix& matrix);
 		static void morphpath(SkPath* dst, const SkPath& src, SkPathMeasure& meas, const SkMatrix& matrix);
+		void weight(const SkPoint src[], const SkPoint tSrc[], const SkPoint bSrc[], int count, SkPoint dst[]);
+		void weight(const SkPath& path, const SkPath& top, const SkPath& bottom, SkPath* dst);
 
-		SkPath skeletonPath_;
+		SkPath tSkeleton_;
+		SkPath bSkeleton_;
 		SkMatrix matrix_;
+
+		SkRect boundsRect_;
+		SkScalar height_;
+		SkPath bWarped_;
+		SkPath tWarped_;
 	};
 }
 

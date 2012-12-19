@@ -31,9 +31,11 @@ protected:
 	virtual void getWarpParams(WarpFrameT& frame, SkMatrix& matrix) const = 0;
 
 	SkPath		bSkeleton_;
+	SkPath		tSkeleton_;
 	SkPath      path_;
-	SkPath		origPath_;
 
+	SkPath		origPath_;
+	SkRect		textBounds_;
 private:
     int fHints;
     typedef SampleView INHERITED;

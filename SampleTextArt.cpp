@@ -27,6 +27,8 @@ bool TextArtView::onQuery(SkEvent* evt)
 
 void TextArtView::onDrawContent(SkCanvas* canvas)
 {
+	const std::string TEXT = "Hello TextArt Effects";
+
 	if (!initialized)
 	{
 		initialized = true;
@@ -38,18 +40,23 @@ void TextArtView::onDrawContent(SkCanvas* canvas)
 		getWarpParams(warpFrame, warpMatrix);
 
 		bSkeleton_ = warpFrame[0];
+		if (warpFrame.size()>1)
+			tSkeleton_ = warpFrame[1];
 
 		SkTypeface* typeface = SkTypeface::CreateFromName("Georgia", SkTypeface::kBold);
 
 		TextArt::EnvelopeWarp textArt(bSkeleton_, warpMatrix);	
-
-		path_ = textArt.warp("Hello TextArt Effects", typeface);
+		textArt.setTopSkeleton(tSkeleton_);
+		
+		path_ = textArt.warp(TEXT, typeface);
+		textBounds_ = textArt.getBounds();
 	}
 
     SkPaint paint;
     paint.setAntiAlias(true);
 	paint.setTextSize(SkIntToScalar(64));
     paint.setStyle(SkPaint::kStroke_Style);
+//	paint.setTypeface(typeface);
 
 	canvas->save();
 
@@ -63,17 +70,41 @@ void TextArtView::onDrawContent(SkCanvas* canvas)
 	canvas->translate(xOffset, yOffset);
 
 	paint.setColor(0x33FF3333);
-	canvas->drawRect(pathBounds, paint);
+//	canvas->drawRect(pathBounds, paint);
 
-	//draw the skeleton path
+//	canvas->drawRect(bBounds, paint);
+//	canvas->drawRect(tBounds, paint);
+
+
+/*
+	canvas->drawRect(textArt.getBounds(), paint);
+
 	paint.setColor(SK_ColorGREEN);
+	canvas->drawPath(textArt.bSkeleton_, paint);
+	canvas->drawPath(textArt.bWarped_, paint);
+
+	paint.setColor(SK_ColorCYAN);
+	canvas->drawPath(textArt.tSkeleton_, paint);
+	canvas->drawPath(textArt.tWarped_, paint);
+*/
+	//draw the skeleton path
+	paint.setColor(SK_ColorBLUE);
 	canvas->drawPath(bSkeleton_, paint);
+	canvas->drawPath(tSkeleton_, paint);
 
 	//draw the path
 	paint.setColor(SK_ColorBLACK);
 	paint.setStyle(SkPaint::kFill_Style);
 	canvas->drawPath(path_, paint);
-	
+
+/*
+	SkRect b;
+	paint.setColor(SK_ColorRED);
+	canvas->drawText(TEXT.c_str(), TEXT.size(), 0, 0, paint);
+	paint.measureText(TEXT.c_str(), TEXT.size(), &b);
+	canvas->drawRect(b, paint);
+*/
+
 	canvas->restore();
 }
 
