@@ -27,7 +27,7 @@ protected:
 		//top
 		tpoints.push_back(SkPoint::Make(SkIntToScalar(0), SkIntToScalar(-30)));
 		tpoints.push_back(SkPoint::Make(SkIntToScalar(350), SkIntToScalar(-10)));
-		tpoints.push_back(SkPoint::Make(SkIntToScalar(700), SkIntToScalar(-30)));
+		tpoints.push_back(SkPoint::Make(SkIntToScalar(750), SkIntToScalar(-30)));
 		tSkeleton.addPoly(&(*tpoints.begin()), tpoints.size(), false);
 
 		warpFrame.push_back(tSkeleton);

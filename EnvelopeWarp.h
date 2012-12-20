@@ -24,9 +24,9 @@ namespace TextArt
 		const SkRect& getBounds() const;
 
 	public:
-		static void morphpoints(SkPoint dst[], const SkPoint src[], int count, SkPathMeasure& meas, const SkMatrix& matrix);
-		static void morphpath(SkPath* dst, const SkPath& src, SkPathMeasure& meas, const SkMatrix& matrix);
-		void weight(const SkPoint src[], const SkPoint tSrc[], const SkPoint bSrc[], int count, SkPoint dst[]);
+		void morphpoints(SkPoint dst[], const SkPoint src[], int count, SkPathMeasure& meas, const SkMatrix& matrix);
+		void morphpath(SkPath* dst, const SkPath& src, SkPathMeasure& meas, const SkMatrix& matrix);
+		void weight(const SkPoint src[], const SkPoint tSrc[], const SkPoint bSrc[], int count, const SkRect& srcBounds, SkPoint dst[]);
 		void weight(const SkPath& path, const SkPath& top, const SkPath& bottom, SkPath* dst);
 
 		SkPath tSkeleton_;
@@ -34,9 +34,10 @@ namespace TextArt
 		SkMatrix matrix_;
 
 		SkRect boundsRect_;
-		SkScalar height_;
 		SkPath bWarped_;
 		SkPath tWarped_;
+
+		bool isTangentOriented_;
 	};
 }
 

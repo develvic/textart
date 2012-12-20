@@ -3,9 +3,12 @@
 #include "SkTextToPathIter.h"
 #include "SkTypeface.h"
 
+#include <vector>
+
 TextArt::EnvelopeWarp::EnvelopeWarp(const SkPath& skeleton, const SkMatrix& matrix)
 	: bSkeleton_(skeleton)
 	, matrix_(matrix)
+	, isTangentOriented_(false)
 {
 }
 
@@ -44,22 +47,15 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 	if (text.empty())
 		return warpedPath;
 
+	//prepare paint
 	SkPaint paint;
 	paint.setTextSize(SkIntToScalar(64));
 	paint.setTypeface(typeface);
 	paint.setTextAlign(SkPaint::kCenter_Align);
 
-
-	SkRect tb = tSkeleton_.getBounds();
-	paint.measureText(text.c_str(), text.size(), &boundsRect_);
-	boundsRect_.inset(0, SkFloatToScalar(2));
-	tSkeleton_.offset(0-tb.fLeft, boundsRect_.height());
-	height_ = boundsRect_.height();
-
-	SkPathMeasure   tMeasure(tSkeleton_, false);
+	//measure Bottom path to center text on it
 	SkPathMeasure   bMeasure(bSkeleton_, false);
 	SkScalar        hOffset = 0;
-	//need to measure first
     if (paint.getTextAlign() != SkPaint::kLeft_Align)
 	{
         SkScalar pathLen = bMeasure.getLength();
@@ -70,79 +66,82 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
         hOffset += pathLen;
     }
 
-	SkTextToPathIter	iter(text.c_str(), text.size(), paint, true);
-	const SkPath*   iterPath;
-    SkScalar        xpos;
-
-    SkMatrix        scaleMartix;
-    SkScalar        scale = iter.getPathScale();
-    scaleMartix.setScale(scale, scale);
-/*
-	SkPath origPath;
-	while (iter.next(&iterPath, &xpos))
+	//get text boundaries on normal(non-warped) state
 	{
-		if (iterPath)
-		{
-			SkMatrix	compositeMatrix(scaleMartix);
-			compositeMatrix.postTranslate(xpos + hOffset, 0);
+		SkMatrix scaleMartix;
+		scaleMartix.setIdentity();
 
-			SkPath tmp;
-			(*iterPath).transform(compositeMatrix, &tmp);
-			origPath.addPath(tmp);
+		SkTextToPathIter	iter(text.c_str(), text.size(), paint, true);
+		const SkPath*   glypthPath;
+		SkScalar        xpos;
+
+		SkScalar        scale = iter.getPathScale();
+		scaleMartix.setScale(scale, scale);
+
+		while (iter.next(&glypthPath, &xpos))
+		{
+			if (glypthPath)
+			{
+				//prepare resulting transformatiom Matrix
+				SkMatrix	compositeMatrix(scaleMartix);
+				compositeMatrix.postTranslate(xpos + hOffset, 0);
+				
+				//get normal(without any warps) text boundaries
+				boundsRect_.join( (*glypthPath).getBounds() );
+			}
 		}
 	}
-	boundsRect_ = origPath.getBounds();
-	SkRect tb = tSkeleton_.getBounds();
-	tSkeleton_.offset(0-tb.fLeft, boundsRect_.height());
-	height_ = boundsRect_.height();
-*/
 
-/*
+	//move down Top skeleton on text height
+	tSkeleton_.offset(0, SkScalarAbs(boundsRect_.fTop));
+	
+	//warp text on Bottom and Top skeletons
 	{
 		SkPathMeasure   tMeasure(tSkeleton_, false);
-		SkPathMeasure   bMeasure(bSkeleton_, false);
 
+		SkTextToPathIter	iter(text.c_str(), text.size(), paint, true);
+		const SkPath*   glypthPath;
+		SkScalar        xpos;
 
-		SkPath tWarped, bWarped;
+		SkMatrix        scaleMartix;
+		SkScalar        scale = iter.getPathScale();
+		scaleMartix.setScale(scale, scale);
 
-		morphpath(&bWarped, origPath, bMeasure, matrix_);
-		morphpath(&tWarped, origPath, tMeasure, matrix_);
+		SkPath line;
+		line.lineTo(SkIntToScalar(100), SkIntToScalar(0));
+		SkPathMeasure   lineMeasure(line, false);
 
-		weight(origPath, tWarped, bWarped, &warpedPath);
-
-		bWarped_.addPath(bWarped); tWarped_.addPath(tWarped);
-	//	warpedPath.addPath(tWarped);
-	}
-*/
-
-	SkPath tWarped, bWarped;
-	xpos = 0;
-	while (iter.next(&iterPath, &xpos))
-	{
-		if (iterPath)
+		while (iter.next(&glypthPath, &xpos))
 		{
-
-			SkMatrix	compositeMatrix(scaleMartix);
-			compositeMatrix.postTranslate(xpos + hOffset, 0);
-			compositeMatrix.postConcat(matrix_);
-
-			SkPath tWarped, bWarped;
-
-			morphpath(&bWarped, *iterPath, bMeasure, compositeMatrix);
-
-			if (!tSkeleton_.isEmpty())
+			if (glypthPath)
 			{
-				morphpath(&tWarped, *iterPath, tMeasure, compositeMatrix);
+				//prepare resulting transformatiom Matrix
+				SkMatrix	compositeMatrix(scaleMartix);
+				compositeMatrix.postTranslate(xpos + hOffset, 0);
+				compositeMatrix.postConcat(matrix_);
 
-				weight(*iterPath, tWarped, bWarped, &warpedPath);
+				//warp Glypth by bottom line
+				SkPath bWarped;
+				morphpath(&bWarped, *glypthPath, bMeasure, compositeMatrix);
+				bWarped_.addPath(bWarped);
 
-				bWarped_.addPath(bWarped); tWarped_.addPath(tWarped);
+				if (!tSkeleton_.isEmpty())
+				{
+					//transform Glypth, 
+					SkPath lineMorphed;
+					morphpath(&lineMorphed, *glypthPath, lineMeasure, scaleMartix);
+
+					SkPath tWarped;
+					morphpath(&tWarped, *glypthPath, tMeasure, compositeMatrix);
+					tWarped_.addPath(tWarped);
+
+					weight(lineMorphed, tWarped, bWarped, &warpedPath);
+				}
+				else
+					warpedPath.addPath(bWarped_);
 			}
-			else
-				warpedPath.addPath(bWarped);
-
 		}
-    }
+	}
 	
 	return warpedPath;
 }
@@ -177,12 +176,17 @@ void TextArt::EnvelopeWarp::morphpoints(SkPoint dst[], const SkPoint src[], int 
             matrix.postTranslate(pos.fX, pos.fY);
             matrix.mapPoints(&dst[i], &pt, 1);
         */
-/*
-        dst[i].set(pos.fX - SkScalarMul(tangent.fY, sy),
+
+		if (isTangentOriented_)
+		{
+			dst[i].set(pos.fX - SkScalarMul(tangent.fY, sy),
                    pos.fY + SkScalarMul(tangent.fX, sy));
-*/
-		dst[i].set(pos.fX,
-            pos.fY +  sy);
+		}
+		else
+		{
+			dst[i].set(pos.fX,
+				pos.fY + sy);
+		}
     }
 }
 
@@ -208,18 +212,18 @@ void TextArt::EnvelopeWarp::morphpath(SkPath* dst, const SkPath& src, SkPathMeas
                 dst->moveTo(dstP[0]);
                 break;
             case SkPath::kLine_Verb:
+/*
                 morphpoints(dstP, &srcP[1], 1, meas, matrix);
                 dst->lineTo(dstP[0]);
                 break;
+*/
 
-/*
                 // turn lines into quads to look bendy
                 srcP[0].fX = SkScalarAve(srcP[0].fX, srcP[1].fX);
                 srcP[0].fY = SkScalarAve(srcP[0].fY, srcP[1].fY);
                 morphpoints(dstP, srcP, 2, meas, matrix);
                 dst->quadTo(dstP[0], dstP[1]);
                 break;
-*/
             case SkPath::kQuad_Verb:
                 morphpoints(dstP, &srcP[1], 2, meas, matrix);
                 dst->quadTo(dstP[0], dstP[1]);
@@ -238,7 +242,7 @@ void TextArt::EnvelopeWarp::morphpath(SkPath* dst, const SkPath& src, SkPathMeas
     }
 }
 
-void TextArt::EnvelopeWarp::weight(const SkPoint src[], const SkPoint tSrc[], const SkPoint bSrc[], int count, SkPoint dst[])
+void TextArt::EnvelopeWarp::weight(const SkPoint src[], const SkPoint tSrc[], const SkPoint bSrc[], int count, const SkRect& srcBounds, SkPoint dst[])
 {
 	for (int i = 0; i < count; i++)
 	{
@@ -247,56 +251,11 @@ void TextArt::EnvelopeWarp::weight(const SkPoint src[], const SkPoint tSrc[], co
 		dst[i].fX = bSrc[i].fX;
 		dst[i].fY = origY;
 		
-		if (boundsRect_.fBottom > 0)
-			origY -= boundsRect_.fBottom;
+		if (srcBounds.fBottom > 0)
+			origY -= srcBounds.fBottom;
 		
-		SkScalar k1 = SkScalarAbs( SkScalarDiv(origY, height_) );
+		SkScalar k1 = SkScalarAbs( SkScalarDiv(origY, srcBounds.height()) );
 		dst[i].fY = SkScalarInterp(bSrc[i].fY, tSrc[i].fY, k1);
-
-/*
-		SkScalar h = boundsRect_.centerY();
-
-		if (origY <= h)
-		{
-			origY = origY + 17;
-			SkScalar k = SkScalarAbs( SkScalarDiv(origY, 18) );
-
-			dst[i].fY = SkScalarInterp(bSrc[i].fY, tSrc[i].fY, k);
-		}
-		else
-		{
-			if (origY > 0)
-			{
-				origY = origY + 17;
-
-				SkScalar k = SkScalarAbs( SkScalarDiv(origY, 18) );
-
-				dst[i].fY = SkScalarInterp(tSrc[i].fY, bSrc[i].fY, k);
-
-			}
-			else
-			{
-				origY = origY + 17;
-				SkScalar k = SkScalarAbs( SkScalarDiv(origY, 18) );
-
-				dst[i].fY = SkScalarInterp(tSrc[i].fY, bSrc[i].fY, k);
-			}
-		}
-*/
-/*
-		if (origY <= 0)
-		{
-			SkScalar k1 = SkScalarDiv(origY, -35.0);
-
-			dst[i].fY = SkScalarInterp(bSrc[i].fY, tSrc[i].fY, k1);
-		}
-		else
-		{
-			SkScalar k1 = SkScalarDiv(origY, 1);
-
-			dst[i].fY = SkScalarInterp(0, bSrc[i].fY*2, k1);
-		}
-*/
 	}
 }
 
@@ -309,6 +268,8 @@ void TextArt::EnvelopeWarp::weight(const SkPath& path, const SkPath& top, const 
     SkPoint         tSrc[4], bSrc[4], src[4], dstP[4];
     SkPath::Verb    verbT, verbB, verb;
 
+	const SkRect&	boundsSrc = path.getBounds();
+
     while (((verbT = iterT.next(tSrc)) != SkPath::kDone_Verb)	&& 
 			((verbB = iterB.next(bSrc)) != SkPath::kDone_Verb)	&&
 			((verb = iter.next(src)) != SkPath::kDone_Verb) )
@@ -319,19 +280,19 @@ void TextArt::EnvelopeWarp::weight(const SkPath& path, const SkPath& top, const 
         switch (verbT)
 		{
             case SkPath::kMove_Verb:
-                weight(&src[0], &tSrc[0], &bSrc[0], 1, dstP);
+                weight(&src[0], &tSrc[0], &bSrc[0], 1, boundsSrc, dstP);
                 dst->moveTo(dstP[0]);
                 break;
             case SkPath::kLine_Verb:
-                weight(&src[1], &tSrc[1], &bSrc[1], 1, dstP);
+                weight(&src[1], &tSrc[1], &bSrc[1], 1, boundsSrc, dstP);
                 dst->lineTo(dstP[0]);
                 break;
             case SkPath::kQuad_Verb:
-				weight(&src[1], &tSrc[1], &bSrc[1], 2, dstP);
+				weight(&src[1], &tSrc[1], &bSrc[1], 2, boundsSrc, dstP);
                 dst->quadTo(dstP[0], dstP[1]);
                 break;
             case SkPath::kCubic_Verb:
-				weight(&src[1], &tSrc[1], &bSrc[1], 3, dstP);
+				weight(&src[1], &tSrc[1], &bSrc[1], 3, boundsSrc, dstP);
                 dst->cubicTo(dstP[0], dstP[1], dstP[2]);
                 break;
             case SkPath::kClose_Verb:
