@@ -5,7 +5,7 @@
 #include "SkPath.h"
 #include "SkPathMeasure.h"
 #include "SkPaint.h"
-#include "SkTypeFace.h"
+#include "SkTypeface.h"
 
 #include <string>
 
