@@ -24,7 +24,8 @@ protected:
 		{
 			bSkeleton.addArc(r, SkIntToScalar(180+25), SkIntToScalar(180-2*25));
 
-			bSkeleton.offset(-bSkeleton.getPoint(0).fX, SkIntToScalar(100));
+			//center Bottom arc relatively to Top line
+			bSkeleton.offset(SkScalarHalf(850) - bSkeleton.getBounds().centerX(), SkIntToScalar(100));
 
 			warpFrame.push_back(bSkeleton);
 		}

@@ -11,6 +11,12 @@
 
 namespace TextArt
 {
+	enum XWeightingMode
+	{
+		XWeightingMode_Linearly,
+		XWeightingMode_Interpolating
+	};
+
 	class EnvelopeWarp
 	{
 	public:
@@ -20,6 +26,7 @@ namespace TextArt
 		SkPath warp(const SkPath& path, const SkMatrix& matrix);
 
 		void setTopSkeleton(const SkPath& skeleton);
+		void setIsNormalRotated(bool isRotated);
 
 		const SkRect& getBounds() const;
 
@@ -37,7 +44,11 @@ namespace TextArt
 		SkPath bWarped_;
 		SkPath tWarped_;
 
-		bool isTangentOriented_;
+		bool isNormalRotated_;
+
+		SkScalar k1_;
+		bool isTop;
+		XWeightingMode xWeightingMode_;
 	};
 }
 

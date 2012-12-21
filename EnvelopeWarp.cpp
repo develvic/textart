@@ -1,14 +1,55 @@
-#include "EnvelopeWarp.h"
+	#include "EnvelopeWarp.h"
 
 #include "SkTextToPathIter.h"
 #include "SkTypeface.h"
 
 #include <vector>
 
+/**
+Find dinstance on the path where X equals to given x
+*/
+SkScalar getLengthTillXImpl(SkPathMeasure& path, const SkScalar& x, const SkScalar& d0, const SkScalar& d1)
+{
+	SkScalar dMid = d0 + SkScalarHalf(d1 - d0);
+
+	SkPoint midResult;
+
+	path.getPosTan(dMid, &midResult, NULL);
+
+	if ( SkScalarAbs(x-midResult.fX) < 0.1)
+		return dMid;
+
+	if (x > midResult.fX)
+	{
+		return getLengthTillXImpl(path, x, dMid, d1);
+	}
+	else 
+	{
+		return getLengthTillXImpl(path, x, d0, dMid);
+	}
+}
+
+/**
+ Calculate path length where specified X coordinate crpssed by the path
+*/
+SkScalar getLengthTillX(SkPathMeasure& path, const SkScalar& x)
+{
+	if (path.getLength()==0)
+		return SkIntToScalar(0);
+
+	//TODO: validate that X is crossed by the path at all
+
+	return getLengthTillXImpl(path, x, 0, path.getLength());
+}
+
+///****************************************************************************************************
+
 TextArt::EnvelopeWarp::EnvelopeWarp(const SkPath& skeleton, const SkMatrix& matrix)
 	: bSkeleton_(skeleton)
 	, matrix_(matrix)
-	, isTangentOriented_(false)
+	, isNormalRotated_(false)
+	, xWeightingMode_(XWeightingMode_Interpolating)
+	, k1_(1.0)
 {
 }
 
@@ -22,6 +63,11 @@ void TextArt::EnvelopeWarp::setTopSkeleton(const SkPath& skeleton)
 	bBounds.inset(SkIntToScalar(0), SkFloatToScalar(-0.1));
 //	boundsRect_ = tBounds;
 //	boundsRect_.growToInclude(bBounds);
+}
+
+void TextArt::EnvelopeWarp::setIsNormalRotated(bool isRotated)
+{
+	isNormalRotated_ = isRotated;
 }
 
 const SkRect& TextArt::EnvelopeWarp::getBounds() const
@@ -55,7 +101,8 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 
 	//measure Bottom path to center text on it
 	SkPathMeasure   bMeasure(bSkeleton_, false);
-	SkScalar        hOffset = 0;
+	SkScalar        hBOffset = 0;
+
     if (paint.getTextAlign() != SkPaint::kLeft_Align)
 	{
         SkScalar pathLen = bMeasure.getLength();
@@ -63,7 +110,7 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 		{
             pathLen = SkScalarHalf(pathLen);
         }
-        hOffset += pathLen;
+        hBOffset += pathLen;
     }
 
 	//get text boundaries on normal(non-warped) state
@@ -84,10 +131,12 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 			{
 				//prepare resulting transformatiom Matrix
 				SkMatrix	compositeMatrix(scaleMartix);
-				compositeMatrix.postTranslate(xpos + hOffset, 0);
+				compositeMatrix.postTranslate(xpos + hBOffset, 0);
 				
+				SkPath p;
+				(*glypthPath).transform(compositeMatrix, &p);
 				//get normal(without any warps) text boundaries
-				boundsRect_.join( (*glypthPath).getBounds() );
+				boundsRect_.join( p.getBounds() );
 			}
 		}
 	}
@@ -95,10 +144,23 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 	//move down Top skeleton on text height
 	tSkeleton_.offset(0, SkScalarAbs(boundsRect_.fTop));
 	
+	//center text on Top skeleton
+	SkPathMeasure   tMeasure(tSkeleton_, false);
+	SkScalar        hTOffset = 0;	
+	{
+		if (paint.getTextAlign() != SkPaint::kLeft_Align)
+		{
+			SkScalar pathLen = tMeasure.getLength();
+			if (paint.getTextAlign() == SkPaint::kCenter_Align)
+			{
+				pathLen = SkScalarHalf(pathLen);
+			}
+			hTOffset += pathLen;
+		}
+	}		
+
 	//warp text on Bottom and Top skeletons
 	{
-		SkPathMeasure   tMeasure(tSkeleton_, false);
-
 		SkTextToPathIter	iter(text.c_str(), text.size(), paint, true);
 		const SkPath*   glypthPath;
 		SkScalar        xpos;
@@ -111,28 +173,53 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 		line.lineTo(SkIntToScalar(100), SkIntToScalar(0));
 		SkPathMeasure   lineMeasure(line, false);
 
+		//calculate TopLength/BottomLength relation for Linearly mode
+		if (xWeightingMode_ == XWeightingMode_Linearly)
+		{
+			//get X-coordinate of the last point of text(in normal state)
+			SkScalar b = boundsRect_.width() + hBOffset;
+			SkScalar bl, tl;
+			SkPoint bp;
+			//get X-coordinate of the last point of text placed on Bottom line
+			bMeasure.getPosTan(b, &bp, NULL);
+			
+			//get length of Top and Bottom lines till the intersection with X-ccordinate calulated above
+			bl = getLengthTillX(bMeasure, bp.fX);
+			tl = getLengthTillX(tMeasure, bp.fX);
+			//scaling coefficient
+			k1_ = SkScalarDiv(tl, bl);
+			//ignore Top centering in Linearly mode
+			hTOffset = hBOffset;
+		}
+
 		while (iter.next(&glypthPath, &xpos))
 		{
 			if (glypthPath)
 			{
 				//prepare resulting transformatiom Matrix
-				SkMatrix	compositeMatrix(scaleMartix);
-				compositeMatrix.postTranslate(xpos + hOffset, 0);
-				compositeMatrix.postConcat(matrix_);
+				SkMatrix	compositeBMatrix(scaleMartix);
+				compositeBMatrix.postTranslate(xpos + hBOffset, 0);
+				compositeBMatrix.postConcat(matrix_);
 
+				isTop = false;
 				//warp Glypth by bottom line
 				SkPath bWarped;
-				morphpath(&bWarped, *glypthPath, bMeasure, compositeMatrix);
+				morphpath(&bWarped, *glypthPath, bMeasure, compositeBMatrix);
 				bWarped_.addPath(bWarped);
 
 				if (!tSkeleton_.isEmpty())
 				{
+					SkMatrix	compositeTMatrix(scaleMartix);
+					compositeTMatrix.postTranslate(xpos + hTOffset, 0);
+					compositeTMatrix.postConcat(matrix_);
+
 					//transform Glypth, 
 					SkPath lineMorphed;
 					morphpath(&lineMorphed, *glypthPath, lineMeasure, scaleMartix);
 
+					isTop = true;
 					SkPath tWarped;
-					morphpath(&tWarped, *glypthPath, tMeasure, compositeMatrix);
+					morphpath(&tWarped, *glypthPath, tMeasure, compositeTMatrix);
 					tWarped_.addPath(tWarped);
 
 					weight(lineMorphed, tWarped, bWarped, &warpedPath);
@@ -157,8 +244,15 @@ void TextArt::EnvelopeWarp::morphpoints(SkPoint dst[], const SkPoint src[], int 
         SkVector tangent;
 
         proc(matrix, src[i].fX, src[i].fY, &pos);
-        SkScalar sx = pos.fX;
+
+		SkScalar sx = pos.fX;
         SkScalar sy = pos.fY;
+
+		if (xWeightingMode_ == XWeightingMode_Linearly)
+		{	//in Linearly mode adjust Top text by TopLength/BottomLength relation 
+			if (isTop)
+				sx = k1_ * sx;
+		}
 
         if (!meas.getPosTan(sx, &pos, &tangent))
 		{
@@ -177,7 +271,7 @@ void TextArt::EnvelopeWarp::morphpoints(SkPoint dst[], const SkPoint src[], int 
             matrix.mapPoints(&dst[i], &pt, 1);
         */
 
-		if (isTangentOriented_)
+		if (isNormalRotated_)
 		{
 			dst[i].set(pos.fX - SkScalarMul(tangent.fY, sy),
                    pos.fY + SkScalarMul(tangent.fX, sy));
@@ -247,15 +341,22 @@ void TextArt::EnvelopeWarp::weight(const SkPoint src[], const SkPoint tSrc[], co
 	for (int i = 0; i < count; i++)
 	{
 		SkScalar origY = src[i].fY;
+		SkScalar origX = src[i].fX;
 
 		dst[i].fX = bSrc[i].fX;
 		dst[i].fY = origY;
 		
 		if (srcBounds.fBottom > 0)
 			origY -= srcBounds.fBottom;
+
 		
 		SkScalar k1 = SkScalarAbs( SkScalarDiv(origY, srcBounds.height()) );
 		dst[i].fY = SkScalarInterp(bSrc[i].fY, tSrc[i].fY, k1);
+
+		if (xWeightingMode_ == XWeightingMode_Interpolating)
+		{	//in Interpolating mode calculate X as interpolation beween Top and Bottom
+			dst[i].fX = SkScalarInterp(bSrc[i].fX, tSrc[i].fX, k1);
+		}
 	}
 }
 
