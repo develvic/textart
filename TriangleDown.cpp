@@ -18,16 +18,16 @@ protected:
 
 		//bottom
 		bpoints.push_back(SkPoint::Make(SkIntToScalar(0), SkIntToScalar(0)));
-		bpoints.push_back(SkPoint::Make(SkIntToScalar(350), SkIntToScalar(90)));
-		bpoints.push_back(SkPoint::Make(SkIntToScalar(700), SkIntToScalar(0)));
+		bpoints.push_back(SkPoint::Make(SkIntToScalar(400), SkIntToScalar(90)));
+		bpoints.push_back(SkPoint::Make(SkIntToScalar(800), SkIntToScalar(0)));
 		bSkeleton.addPoly(&(*bpoints.begin()), bpoints.size(), false);
 
 		warpFrame.push_back(bSkeleton);
 
 		//top
 		tpoints.push_back(SkPoint::Make(SkIntToScalar(0), SkIntToScalar(-30)));
-		tpoints.push_back(SkPoint::Make(SkIntToScalar(350), SkIntToScalar(-10)));
-		tpoints.push_back(SkPoint::Make(SkIntToScalar(750), SkIntToScalar(-30)));
+		tpoints.push_back(SkPoint::Make(SkIntToScalar(400), SkIntToScalar(-10)));
+		tpoints.push_back(SkPoint::Make(SkIntToScalar(800), SkIntToScalar(-30)));
 		tSkeleton.addPoly(&(*tpoints.begin()), tpoints.size(), false);
 
 		warpFrame.push_back(tSkeleton);

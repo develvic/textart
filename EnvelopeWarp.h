@@ -5,7 +5,7 @@
 #include "SkPath.h"
 #include "SkPathMeasure.h"
 #include "SkPaint.h"
-#include "SkTypeFace.h"
+#include "SkTypeface.h"
 
 #include <string>
 
@@ -20,6 +20,7 @@ namespace TextArt
 		SkPath warp(const SkPath& path, const SkMatrix& matrix);
 
 		void setTopSkeleton(const SkPath& skeleton);
+		void setIsNormalRotated(bool isRotated);
 
 		const SkRect& getBounds() const;
 
@@ -37,7 +38,10 @@ namespace TextArt
 		SkPath bWarped_;
 		SkPath tWarped_;
 
-		bool isTangentOriented_;
+		bool isNormalRotated_;
+
+		SkScalar k1_;
+		bool isTop;
 	};
 }
 
