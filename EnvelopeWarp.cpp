@@ -144,7 +144,7 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 	}
 
 	//move down Top skeleton on text height
-	//tSkeleton_.offset(0, SkScalarAbs(boundsRect_.fTop));
+	tSkeleton_.offset(0, SkScalarAbs(boundsRect_.fTop));
 	
 	//center text on Top skeleton
 	SkPathMeasure   tMeasure(tSkeleton_, false);
