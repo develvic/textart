@@ -13,8 +13,8 @@ namespace TextArt
 {
 	enum XWeightingMode
 	{
-		XWeightingMode_Linearly,
-		XWeightingMode_Interpolating
+		XWeightingMode_Linearly			= 0x01,
+		XWeightingMode_Interpolating	= 0x02
 	};
 
 	class EnvelopeWarp
@@ -48,7 +48,7 @@ namespace TextArt
 
 		SkScalar k1_;
 		bool isTop;
-		XWeightingMode xWeightingMode_;
+		unsigned int xWeightingMode_;
 	};
 }
 

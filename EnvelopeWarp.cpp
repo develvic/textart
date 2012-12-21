@@ -48,7 +48,9 @@ TextArt::EnvelopeWarp::EnvelopeWarp(const SkPath& skeleton, const SkMatrix& matr
 	: bSkeleton_(skeleton)
 	, matrix_(matrix)
 	, isNormalRotated_(false)
-	, xWeightingMode_(XWeightingMode_Interpolating)
+//	, xWeightingMode_(XWeightingMode_Linearly)
+//	, xWeightingMode_(XWeightingMode_Interpolating)
+	, xWeightingMode_(XWeightingMode_Linearly | XWeightingMode_Interpolating)
 	, k1_(1.0)
 {
 }
@@ -142,7 +144,7 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 	}
 
 	//move down Top skeleton on text height
-	tSkeleton_.offset(0, SkScalarAbs(boundsRect_.fTop));
+	//tSkeleton_.offset(0, SkScalarAbs(boundsRect_.fTop));
 	
 	//center text on Top skeleton
 	SkPathMeasure   tMeasure(tSkeleton_, false);
@@ -174,7 +176,7 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 		SkPathMeasure   lineMeasure(line, false);
 
 		//calculate TopLength/BottomLength relation for Linearly mode
-		if (xWeightingMode_ == XWeightingMode_Linearly)
+		if (xWeightingMode_ & XWeightingMode_Linearly)
 		{
 			//get X-coordinate of the last point of text(in normal state)
 			SkScalar b = boundsRect_.width() + hBOffset;
@@ -188,8 +190,8 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 			tl = getLengthTillX(tMeasure, bp.fX);
 			//scaling coefficient
 			k1_ = SkScalarDiv(tl, bl);
-			//ignore Top centering in Linearly mode
-			hTOffset = hBOffset;
+			//adjust Top centering offset
+			hTOffset /= k1_;
 		}
 
 		while (iter.next(&glypthPath, &xpos))
@@ -248,7 +250,7 @@ void TextArt::EnvelopeWarp::morphpoints(SkPoint dst[], const SkPoint src[], int 
 		SkScalar sx = pos.fX;
         SkScalar sy = pos.fY;
 
-		if (xWeightingMode_ == XWeightingMode_Linearly)
+		if (xWeightingMode_ & XWeightingMode_Linearly)
 		{	//in Linearly mode adjust Top text by TopLength/BottomLength relation 
 			if (isTop)
 				sx = k1_ * sx;
@@ -353,7 +355,7 @@ void TextArt::EnvelopeWarp::weight(const SkPoint src[], const SkPoint tSrc[], co
 		SkScalar k1 = SkScalarAbs( SkScalarDiv(origY, srcBounds.height()) );
 		dst[i].fY = SkScalarInterp(bSrc[i].fY, tSrc[i].fY, k1);
 
-		if (xWeightingMode_ == XWeightingMode_Interpolating)
+		if (xWeightingMode_ & XWeightingMode_Interpolating)
 		{	//in Interpolating mode calculate X as interpolation beween Top and Bottom
 			dst[i].fX = SkScalarInterp(bSrc[i].fX, tSrc[i].fX, k1);
 		}
