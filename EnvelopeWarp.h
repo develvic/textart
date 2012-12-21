@@ -11,6 +11,12 @@
 
 namespace TextArt
 {
+	enum XWeightingMode
+	{
+		XWeightingMode_Linearly,
+		XWeightingMode_Interpolating
+	};
+
 	class EnvelopeWarp
 	{
 	public:
@@ -42,6 +48,7 @@ namespace TextArt
 
 		SkScalar k1_;
 		bool isTop;
+		XWeightingMode xWeightingMode_;
 	};
 }
 
