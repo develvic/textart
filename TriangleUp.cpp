@@ -19,7 +19,7 @@ protected:
 
 		//bottom
 		bpoints.push_back(SkPoint::Make(SkIntToScalar(0), SkIntToScalar(0)));
-		bpoints.push_back(SkPoint::Make(SkIntToScalar(475), SkIntToScalar(25)));
+		bpoints.push_back(SkPoint::Make(SkIntToScalar(475), SkIntToScalar(0)));
 		bpoints.push_back(SkPoint::Make(SkIntToScalar(950), SkIntToScalar(0)));
 		bSkeleton.addPoly(&(*bpoints.begin()), bpoints.size(), false);
 
