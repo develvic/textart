@@ -18,7 +18,7 @@ protected:
 
 		SkRect r;
 		r.set(SkIntToScalar(0), SkIntToScalar(0),
-				SkIntToScalar(900), SkIntToScalar(500));
+				SkIntToScalar(900), SkIntToScalar(800));
 
 		//bottom
 		{
@@ -34,7 +34,10 @@ protected:
 			tSkeleton.addArc(r, SkIntToScalar(180+25), SkIntToScalar(180-2*25));
 			
 			//center Top arc relatively to Bottom line
-			tSkeleton.offset(SkScalarHalf(800) - tSkeleton.getBounds().centerX(), SkIntToScalar(-200));
+			//tSkeleton.offset(SkScalarHalf(800) - tSkeleton.getBounds().centerX(), SkIntToScalar(-200));
+
+			//alignt Top to the Left of Bottom
+			tSkeleton.offset(0 - tSkeleton.getBounds().left(), SkIntToScalar(-270));
 
 			warpFrame.push_back(tSkeleton);
 		}

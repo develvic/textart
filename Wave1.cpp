@@ -12,7 +12,7 @@ public:
 protected:
 	virtual void getWarpParams(WarpFrameT& warpFrame, SkMatrix& warpMatrix) const
 	{
-		SkPath bSkeleton;
+		SkPath bSkeleton, tSkeleton;
 
 		//wave1
 		bSkeleton.cubicTo(SkIntToScalar(160), SkIntToScalar(-120),
@@ -20,6 +20,12 @@ protected:
 							SkIntToScalar(700), SkIntToScalar(0));
 
 		warpFrame.push_back(bSkeleton);
+
+		{	//top
+			bSkeleton.offset(SkIntToScalar(0), SkIntToScalar(-100), &tSkeleton);
+
+			warpFrame.push_back(tSkeleton);
+		}
 	}
 
 };

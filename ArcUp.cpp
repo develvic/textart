@@ -1,11 +1,11 @@
 #include "SampleTextArt.h"
 #include <vector>
 
-class Deflate : public TextArtView
+class ArcUp : public TextArtView
 {
 public:
-	Deflate()
-		: TextArtView("TextArt-Deflate")
+	ArcUp()
+		: TextArtView("TextArt-ArcUp")
 	{
 	}
 
@@ -14,33 +14,34 @@ protected:
 	{
 		SkPath bSkeleton, tSkeleton;
 
-		
 		SkRect r;
 		r.set(SkIntToScalar(0), SkIntToScalar(0),
-				SkIntToScalar(900), SkIntToScalar(400));
+				SkIntToScalar(600), SkIntToScalar(340));
 
 		//bottom
 		{
-			bSkeleton.addArc(r, SkIntToScalar(180+25), SkIntToScalar(180-2*25));
+			bSkeleton.addArc(r, SkIntToScalar(180), SkIntToScalar(180));
 
 			warpFrame.push_back(bSkeleton);
 		}
-		
+
 		//top
 		{
-			r.offset(SkIntToScalar(0), SkIntToScalar(-480));
-
-			SkPath tmp;
-			tmp.addArc(r, SkIntToScalar(0+25), SkIntToScalar(180-2*25));
-			tSkeleton.reverseAddPath(tmp);
+			r.inset(SkIntToScalar(-120), SkIntToScalar(-70));
+			tSkeleton.addArc(r, SkIntToScalar(180), SkIntToScalar(180));
 
 			warpFrame.push_back(tSkeleton);
 		}
 	}
+
+	virtual bool getIsNormalRotated() const 
+	{
+		return true;
+	}
 };
 
 static SkView* MyFactory() {
-    return new Deflate;
+    return new ArcUp;
 }
 
 static SkViewRegister reg(MyFactory);

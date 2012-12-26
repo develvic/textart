@@ -12,16 +12,24 @@ public:
 protected:
 	virtual void getWarpParams(WarpFrameT& warpFrame, SkMatrix& warpMatrix) const
 	{
-		SkPath bSkeleton;
+		SkPath bSkeleton, tSkeleton;
 
-		//chevron down
-		std::vector<SkPoint> points, bPoints;
-		points.push_back(SkPoint::Make(SkIntToScalar(0), SkIntToScalar(0)));
-		points.push_back(SkPoint::Make(SkIntToScalar(350), SkIntToScalar(50)));
-		points.push_back(SkPoint::Make(SkIntToScalar(700), SkIntToScalar(0)));
-		bSkeleton.addPoly(&(*points.begin()), points.size(), false);
+		std::vector<SkPoint> tPoints, bPoints;
+	
+		{	//bottom
+			bPoints.push_back(SkPoint::Make(SkIntToScalar(0), SkIntToScalar(0)));
+			bPoints.push_back(SkPoint::Make(SkIntToScalar(350), SkIntToScalar(50)));
+			bPoints.push_back(SkPoint::Make(SkIntToScalar(700), SkIntToScalar(0)));
+			bSkeleton.addPoly(&(*bPoints.begin()), bPoints.size(), false);
 
-		warpFrame.push_back(bSkeleton);
+			warpFrame.push_back(bSkeleton);
+		}
+
+		{	//top
+			bSkeleton.offset(SkIntToScalar(0), SkIntToScalar(-100), &tSkeleton);
+
+			warpFrame.push_back(tSkeleton);
+		}
 	}
 
 };
