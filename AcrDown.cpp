@@ -1,11 +1,11 @@
 #include "SampleTextArt.h"
 #include <vector>
 
-class ArcUp : public TextArtView
+class ArcDown : public TextArtView
 {
 public:
-	ArcUp()
-		: TextArtView("TextArt-ArcUp")
+	ArcDown()
+		: TextArtView("TextArt-ArcDown")
 	{
 	}
 
@@ -20,16 +20,23 @@ protected:
 
 		//bottom
 		{
-			bSkeleton.addArc(r, SkIntToScalar(180), SkIntToScalar(180));
+			SkRect rb(r);
+			rb.inset(SkIntToScalar(-240), SkIntToScalar(-140));
+
+			SkPath tmp;
+			tmp.addArc(rb, SkIntToScalar(0), SkIntToScalar(180));
+			bSkeleton.reverseAddPath(tmp);
 
 			warpFrame.push_back(bSkeleton);
 		}
 
 		//top
 		{
-			r.inset(SkIntToScalar(-120), SkIntToScalar(-70));
-			r.inset(SkIntToScalar(-120), SkIntToScalar(-70));
-			tSkeleton.addArc(r, SkIntToScalar(180), SkIntToScalar(180));
+			
+
+			SkPath tmp;
+			tmp.addArc(r, SkIntToScalar(0), SkIntToScalar(180));
+			tSkeleton.reverseAddPath(tmp);
 
 			warpFrame.push_back(tSkeleton);
 		}
@@ -42,7 +49,7 @@ protected:
 };
 
 static SkView* MyFactory() {
-    return new ArcUp;
+    return new ArcDown;
 }
 
 static SkViewRegister reg(MyFactory);

@@ -30,6 +30,10 @@ protected:
 
 	virtual void getWarpParams(WarpFrameT& frame, SkMatrix& matrix) const = 0;
 
+	virtual bool getIsNormalRotated() const {return false;}
+
+	virtual bool getIsSymmetric() const {return false;}
+
 	SkPath		bSkeleton_;
 	SkPath		tSkeleton_;
 	SkPath      path_;

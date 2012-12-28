@@ -8,6 +8,7 @@
 #include "SkTypeface.h"
 
 #include <string>
+#include <vector>
 
 namespace TextArt
 {
@@ -27,6 +28,7 @@ namespace TextArt
 
 		void setTopSkeleton(const SkPath& skeleton);
 		void setIsNormalRotated(bool isRotated);
+		void setIsSymmetric(bool isSymmetric);
 
 		const SkRect& getBounds() const;
 
@@ -45,10 +47,15 @@ namespace TextArt
 		SkPath tWarped_;
 
 		bool isNormalRotated_;
+		bool isSymmetric_;
 
 		SkScalar k1_;
 		bool isTop;
 		unsigned int xWeightingMode_;
+
+		SkPath normal;
+		SkPath tFlattern;
+		std::vector<SkPoint> intersections;
 	};
 }
 

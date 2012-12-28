@@ -44,4 +44,4 @@ static SkView* MyFactory() {
     return new Circle;
 }
 
-static SkViewRegister reg(MyFactory);
+//static SkViewRegister reg(MyFactory);

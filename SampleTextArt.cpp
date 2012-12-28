@@ -27,7 +27,8 @@ bool TextArtView::onQuery(SkEvent* evt)
 
 void TextArtView::onDrawContent(SkCanvas* canvas)
 {
-	const std::string TEXT = "Hello TextArt Effects";
+	const std::string TEXT = "Helpo TextArt Effects";
+	SkTypeface* typeface = SkTypeface::CreateFromName("Georgia", SkTypeface::kBold);
 
 	if (!initialized)
 	{
@@ -43,10 +44,10 @@ void TextArtView::onDrawContent(SkCanvas* canvas)
 		if (warpFrame.size()>1)
 			tSkeleton_ = warpFrame[1];
 
-		SkTypeface* typeface = SkTypeface::CreateFromName("Georgia", SkTypeface::kBold);
-
 		TextArt::EnvelopeWarp textArt(bSkeleton_, warpMatrix);	
 		textArt.setTopSkeleton(tSkeleton_);
+		textArt.setIsNormalRotated(getIsNormalRotated());
+		textArt.setIsSymmetric(getIsSymmetric());
 		
 		path_ = textArt.warp(TEXT, typeface);
 		textBounds_ = textArt.getBounds();
@@ -56,7 +57,7 @@ void TextArtView::onDrawContent(SkCanvas* canvas)
     paint.setAntiAlias(true);
 	paint.setTextSize(SkIntToScalar(64));
     paint.setStyle(SkPaint::kStroke_Style);
-//	paint.setTypeface(typeface);
+	paint.setTypeface(typeface);
 
 	canvas->save();
 
@@ -72,13 +73,8 @@ void TextArtView::onDrawContent(SkCanvas* canvas)
 	paint.setColor(0x33FF3333);
 //	canvas->drawRect(pathBounds, paint);
 
-//	canvas->drawRect(bBounds, paint);
-//	canvas->drawRect(tBounds, paint);
-
 
 /*
-	canvas->drawRect(textArt.getBounds(), paint);
-
 	paint.setColor(SK_ColorGREEN);
 	canvas->drawPath(textArt.bSkeleton_, paint);
 	canvas->drawPath(textArt.bWarped_, paint);
@@ -96,15 +92,15 @@ void TextArtView::onDrawContent(SkCanvas* canvas)
 	paint.setColor(SK_ColorBLACK);
 	paint.setStyle(SkPaint::kFill_Style);
 	canvas->drawPath(path_, paint);
-
 /*
-	SkRect b;
 	paint.setColor(SK_ColorRED);
-	canvas->drawText(TEXT.c_str(), TEXT.size(), 0, 0, paint);
-	paint.measureText(TEXT.c_str(), TEXT.size(), &b);
-	canvas->drawRect(b, paint);
+	canvas->drawPath(textArt.normal, paint);
+	canvas->drawPath(textArt.tFlattern, paint);
+	for(int i=0; i<textArt.intersections.size(); ++i)
+	{
+		canvas->drawCircle(textArt.intersections[i].fX, textArt.intersections[i].fY, 1+i/20., paint);
+	}
 */
-
 	canvas->restore();
 }
 

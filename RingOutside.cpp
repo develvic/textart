@@ -9,6 +9,11 @@ public:
 	{
 	}
 
+	virtual bool getIsSymmetric() const
+	{
+		return true;
+	}
+
 protected:
 	virtual void getWarpParams(WarpFrameT& warpFrame, SkMatrix& warpMatrix) const
 	{

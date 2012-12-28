@@ -15,13 +15,13 @@ protected:
 		SkPath bSkeleton, tSkeleton;
 
 		//skew transformation
-		warpMatrix.setSkew(SkFloatToScalar(0.9), SkFloatToScalar(0.0));
+		warpMatrix.setSkew(SkFloatToScalar(0.5), SkFloatToScalar(0.0));
 
 		//line
-		std::vector<SkPoint> points, bPoints;
-		points.push_back(SkPoint::Make(SkIntToScalar(0), SkIntToScalar(0)));
-		points.push_back(SkPoint::Make(SkIntToScalar(800), SkIntToScalar(0)));
-		bSkeleton.addPoly(&(*points.begin()), points.size(), false);
+		std::vector<SkPoint> tPoints, bPoints;
+		bPoints.push_back(SkPoint::Make(SkIntToScalar(-200), SkIntToScalar(0)));
+		bPoints.push_back(SkPoint::Make(SkIntToScalar(800), SkIntToScalar(0)));
+		bSkeleton.addPoly(&(*bPoints.begin()), bPoints.size(), false);
 
 		warpFrame.push_back(bSkeleton);
 
