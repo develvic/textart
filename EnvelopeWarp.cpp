@@ -3,224 +3,10 @@
 #include "SkTextToPathIter.h"
 #include "SkTypeface.h"
 #include "SkGeometry.h"
+#include "SkPathCrossing.h"
 
 #include <vector>
 
-/**
-Find dinstance on the path where X equals to given x
-*/
-SkScalar getLengthTillXImpl(SkPathMeasure& path, const SkScalar& x, const SkScalar& d0, const SkScalar& d1)
-{
-	SkScalar dMid = d0 + SkScalarHalf(d1 - d0);
-
-	SkPoint midResult;
-
-	path.getPosTan(dMid, &midResult, NULL);
-
-	if ( SkScalarAbs(x-midResult.fX) < 0.1)
-		return dMid;
-
-	if (x > midResult.fX)
-	{
-		return getLengthTillXImpl(path, x, dMid, d1);
-	}
-	else 
-	{
-		return getLengthTillXImpl(path, x, d0, dMid);
-	}
-}
-
-/**
- Calculate path length where specified X coordinate crpssed by the path
-*/
-SkScalar getLengthTillX(SkPathMeasure& path, const SkScalar& x)
-{
-	if (path.getLength()==0)
-		return SkIntToScalar(0);
-
-	//TODO: validate that X is crossed by the path at all
-
-	return getLengthTillXImpl(path, x, 0, path.getLength());
-}
-
-SkScalar getK(SkPathMeasure& tPath, SkPathMeasure& bPath, SkScalar x1, SkScalar x2)
-{
-	//get X-coordinate of the last point of text(in normal state)
-	SkScalar b = x2 - x1;
-	SkScalar bl1, tl1, bl2, tl2;
-	SkPoint bX1, bX2;
-	//get X1-coordinate for line placed on Bottom line
-	bPath.getPosTan(x1, &bX1, NULL);
-	//get X2-coordinate for line placed on Bottom line
-	bPath.getPosTan(x2, &bX2, NULL);
-			
-	//get length of Top and Bottom lines till the intersection with X-ccordinate calulated above
-	bl1 = getLengthTillX(bPath, bX1.fX);
-	tl1 = getLengthTillX(tPath, bX1.fX);
-
-	bl2 = getLengthTillX(bPath, bX2.fX);
-	tl2 = getLengthTillX(tPath, bX2.fX);
-
-	SkScalar bLen = bl2 - bl1;
-	SkScalar tLen = tl2 - tl1;
-
-	SkScalar k = SkScalarDiv(tLen, bLen);
-
-	return k;
-}
-
-
-SkPath flattern(const SkPath& src, int steps)
-{
-	double step = 1.0 / (double)steps;
-
-	SkPath::Iter    iter(src, false);
-    SkPoint         srcP[4], dstP[4];
-    SkPath::Verb    verb;
-	SkPoint			pt;
-	SkPath			rslt;
-	SkPath*			dst = &rslt;
-
-    while ((verb = iter.next(srcP)) != SkPath::kDone_Verb)
-	{
-        switch (verb)
-		{
-            case SkPath::kMove_Verb:
-                dst->moveTo(srcP[0]);
-                break;
-            case SkPath::kLine_Verb:
-                dst->lineTo(srcP[1]);
-                break;
-            case SkPath::kQuad_Verb:
-				pt = srcP[0];
-                for(double t=step; t<1.0; t+=step)
-				{
-					SkEvalQuadAt(srcP, t, &pt);
-					dst->lineTo(pt);
-				}
-				dst->lineTo(srcP[2]);
-                break;
-            case SkPath::kCubic_Verb:
-				pt = srcP[0];
-                for(double t=step; t<1.0; t+=step)
-				{
-					SkEvalCubicAt(srcP, t, &pt, NULL, NULL);
-					dst->lineTo(pt);
-				}
-				dst->lineTo(srcP[3]);
-                break;
-            case SkPath::kClose_Verb:
-                dst->close();
-                break;
-            default:
-                SkDEBUGFAIL("unknown verb");
-                break;
-        }
-    }
-	return rslt;
-}
-
-bool lineToLine(const SkPoint l1[2], const SkPoint l2[2], SkPoint* cross)
-{
-	const SkPoint& l1_0 = l1[0];
-	const SkPoint& l1_1 = l1[1];
-
-	const SkPoint& l2_0 = l2[0];
-	const SkPoint& l2_1 = l2[1];
-
-
-	double A1 = l1_1.fY - l1_0.fY;
-	double B1 = l1_0.fX - l1_1.fX;
-	double C1 = A1*l1_0.fX + B1*l1_0.fY;
-
-	double A2 = l2_1.fY - l2_0.fY;
-	double B2 = l2_0.fX - l2_1.fX;
-	double C2 = A2*l2_0.fX + B2*l2_0.fY;
-
-	double den = A1*B2 - A2*B1;
-
-	if (den == 0)
-		return false;
-
-	cross->fX = (B2*C1 - B1*C2)/den;
-    cross->fY = (A1*C2 - A2*C1)/den;
-	
-	return true;
-}
-
-bool rayToLine(const SkPoint ray[2], const SkPoint line[2], SkPoint* cross)
-{
-	const SkPoint& l1_0 = ray[0];
-	const SkPoint& l1_1 = ray[1];
-
-	const SkPoint& l2_0 = line[0];
-	const SkPoint& l2_1 = line[1];
-
-
-	double A1 = l1_1.fY - l1_0.fY;
-	double B1 = l1_0.fX - l1_1.fX;
-	double C1 = A1*l1_0.fX + B1*l1_0.fY;
-
-	double A2 = l2_1.fY - l2_0.fY;
-	double B2 = l2_0.fX - l2_1.fX;
-	double C2 = A2*l2_0.fX + B2*l2_0.fY;
-
-	double den = A1*B2 - A2*B1;
-
-	if (den == 0)
-		return false;
-
-	cross->fX = (B2*C1 - B1*C2)/den;
-    cross->fY = (A1*C2 - A2*C1)/den;
-
-	bool isActualCross = true;
-	//ray start at l1_0 and continue till Infinity, cut crosses out of ray begining
-	if (l1_0.fX < l1_1.fX)
-		isActualCross &= (cross->fX >= l1_0.fX);
-	if (l1_0.fX > l1_1.fX)
-		isActualCross &= (cross->fX <= l1_0.fX);
-
-	if (l1_0.fY < l1_1.fY)
-		isActualCross &= (cross->fY >= l1_0.fY);
-	if (l1_0.fY > l1_1.fY)
-		isActualCross &= (cross->fY <= l1_0.fY);
-	//cut crosses out of line segment
-	if ( (SkMinScalar(l2_0.fX, l2_1.fX) <= cross->fX) && (cross->fX <= SkMaxScalar(l2_0.fX, l2_1.fX))  &&
-		 (SkMinScalar(l2_0.fY, l2_1.fY) <= cross->fY) && (cross->fY <= SkMaxScalar(l2_0.fY, l2_1.fY))  &&
-		 isActualCross
-		)
-	{	
-		return true;
-	}
-
-	return false;
-}
-
-bool lineToPath(const SkPoint l[2], const SkPath& path, SkPoint* cross)
-{
-	SkPath flatternPath = flattern(path, 6);
-
-	SkPath::Iter    iter(flatternPath, false);
-    SkPoint         srcP[4];
-    SkPath::Verb    verb;
-
-    while ((verb = iter.next(srcP)) != SkPath::kDone_Verb)
-	{
-        switch (verb)
-		{
-            case SkPath::kLine_Verb:
-				if (rayToLine(l, srcP, cross))
-					return true;
-                break;
-/*
-            default:
-                SkDEBUGFAIL("unknown verb");
-                break;
-*/
-        }
-    }
-	return false;
-}
 ///****************************************************************************************************
 
 TextArt::EnvelopeWarp::EnvelopeWarp(const SkPath& skeleton, const SkMatrix& matrix)
@@ -241,10 +27,6 @@ void TextArt::EnvelopeWarp::setTopSkeleton(const SkPath& skeleton)
 
 	SkRect bBounds = bSkeleton_.getBounds();
 	const SkRect& tBounds = tSkeleton_.getBounds();
-
-	bBounds.inset(SkIntToScalar(0), SkFloatToScalar(-0.1));
-//	boundsRect_ = tBounds;
-//	boundsRect_.growToInclude(bBounds);
 }
 
 void TextArt::EnvelopeWarp::setIsNormalRotated(bool isRotated)
@@ -342,7 +124,7 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 			hTOffset += pathLen;
 		}
 	}		
-
+	
 	//warp text on Bottom and Top skeletons
 	{
 		SkTextToPathIter	iter(text.c_str(), text.size(), paint, true);
@@ -375,7 +157,9 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 			hTOffset /= k1_;
 		}
 */
-		tFlattern = flattern(tSkeleton_, 3);
+
+		SkPathCrossing bCrossing(bSkeleton_);
+		SkPathCrossing tCrossing(tSkeleton_);
 
 		const SkPath*   glypthPathOrig;
 		while (iter.next(&glypthPathOrig, &xpos))
@@ -393,19 +177,19 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 				glypthPathOrig->offset(-glypthBound.fLeft, 0, &glypthPath);
 				glypthBound = glypthPath.getBounds();
 
-
 				if (!isSymmetric_)
 				{	//compuite normal at CenterX to Bottom path
 					const SkRect& tBounds = tSkeleton_.getBounds();
 
 					SkPoint centerX[4], tCenterX[4];
-					//left
-					centerX[0].set(glypthBound.fLeft, glypthBound.fBottom);
-					centerX[1].set(glypthBound.fLeft, -100);
-					//right
-					centerX[2].set(glypthBound.fRight, glypthBound.fBottom);
-					centerX[3].set(glypthBound.fRight, -100);
-							
+					//left normal
+					centerX[0].set(glypthBound.fLeft, +10);
+					centerX[1].set(glypthBound.fLeft, -10);
+					//right normal
+					centerX[2].set(glypthBound.fRight, +10);
+					centerX[3].set(glypthBound.fRight, -10);
+						
+					//morph normal point by Bottom skeleton
 					isTop = false;
 					morphpoints(tCenterX, centerX, 4, bMeasure, compositeBMatrix);
 					normal.moveTo(tCenterX[0]);
@@ -413,26 +197,28 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 					normal.moveTo(tCenterX[2]);
 					normal.lineTo(tCenterX[3]);
 
-					SkPoint tCrossL;
-					SkScalar tTL;
-					if (lineToPath(tCenterX, tSkeleton_, &tCrossL))
+					SkPoint bCrossR, bCrossL, tCrossL, tCrossR;
+					SkScalar bCrossDistR, bCrossDistL, tCrossDistL, tCrossDistR;
+					//get intersection between Normals and Skeletons
+					if (tCrossing.rayCrossing(tCenterX, &tCrossDistL, &tCrossL) &&
+						tCrossing.rayCrossing(&tCenterX[2], &tCrossDistR, &tCrossR) &&
+						bCrossing.rayCrossing(&tCenterX[0], &bCrossDistL, &bCrossL) &&
+						bCrossing.rayCrossing(&tCenterX[2], &bCrossDistR, &bCrossR) )
 					{
 						intersections.push_back(tCrossL);
-						tTL = getLengthTillX(tMeasure, tCrossL.fX);
-						hTOffset = tTL;
-						xpos = 0;
-					}
-
-					SkPoint tCrossR;
-					if (lineToPath(&tCenterX[2], tSkeleton_, &tCrossR))
-					{
 						intersections.push_back(tCrossR);
-						SkScalar tTR = getLengthTillX(tMeasure, tCrossR.fX);
+						intersections.push_back(bCrossL);
+						intersections.push_back(bCrossR);
 
-						SkScalar bTL = getLengthTillX(bMeasure, tCenterX[0].fX);
-						SkScalar bTR = getLengthTillX(bMeasure, tCenterX[2].fX);
-						k1_ = (tTR - tTL) / (bTR - bTL);
+						//use distance to Left on Top Skeleton for positioning Top glypthn
+						hTOffset = tCrossDistL;
+						xpos = 0;
+
+						//calulate linear coeffiction for stretching Top glypth
+						k1_ = (tCrossDistR - tCrossDistL) / (bCrossDistR - bCrossDistL);
 					}
+					else
+						k1_ = 1.0;
 				}
 				
 				isTop = false;

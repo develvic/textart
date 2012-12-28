@@ -27,7 +27,7 @@ protected:
 
 		//top
 		{
-			r.inset(SkIntToScalar(-120), SkIntToScalar(-40));
+			r.inset(SkIntToScalar(2*-70), SkIntToScalar(2*-40));
 			tSkeleton.addOval(r);
 
 			warpFrame.push_back(tSkeleton);
@@ -44,4 +44,4 @@ static SkView* MyFactory() {
     return new Circle;
 }
 
-//static SkViewRegister reg(MyFactory);
+static SkViewRegister reg(MyFactory);
