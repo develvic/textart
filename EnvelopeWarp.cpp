@@ -1,4 +1,4 @@
-	#include "EnvelopeWarp.h"
+#include "EnvelopeWarp.h"
 
 #include "SkTextToPathIter.h"
 #include "SkTypeface.h"
@@ -12,10 +12,10 @@ TextArt::EnvelopeWarp::EnvelopeWarp(const SkPath& skeleton, const SkMatrix& matr
 	: bSkeleton_(skeleton)
 	, matrix_(matrix)
 	, isNormalRotated_(false)
+    , isSymmetric_(false)
+    , isTopBased_(false)
+    , k1_(1.0)
 	, xWeightingMode_(XWeightingMode_Linearly | XWeightingMode_Interpolating)
-	, k1_(1.0)
-	, isSymmetric_(false)
-	, isTopBased_(false)
 {
 }
 
