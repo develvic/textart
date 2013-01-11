@@ -4,6 +4,7 @@
 #include "SkMatrix.h"
 #include "SkPath.h"
 #include "SkPathMeasure.h"
+#include "SkPathCrossing.h"
 #include "SkPaint.h"
 #include "SkTypeface.h"
 
@@ -29,14 +30,22 @@ namespace TextArt
 		void setTopSkeleton(const SkPath& skeleton);
 		void setIsNormalRotated(bool isRotated);
 		void setIsSymmetric(bool isSymmetric);
-
-		const SkRect& getBounds() const;
+		void setIsTopBased(bool isTopBased);
 
 	public:
 		void morphpoints(SkPoint dst[], const SkPoint src[], int count, SkPathMeasure& meas, const SkMatrix& matrix);
 		void morphpath(SkPath* dst, const SkPath& src, SkPathMeasure& meas, const SkMatrix& matrix);
 		void weight(const SkPoint src[], const SkPoint tSrc[], const SkPoint bSrc[], int count, const SkRect& srcBounds, SkPoint dst[]);
 		void weight(const SkPath& path, const SkPath& top, const SkPath& bottom, SkPath* dst);
+
+		void morph(SkPath& bSkeleton, SkPathMeasure& bMeasure, SkPathCrossing& bCrossing,
+				   SkPath& tSkeleton, SkPathMeasure& tMeasure, SkPathCrossing& tCrossing,
+				   SkPath& glypthPath, SkPathMeasure& lineMeasure, SkMatrix& scaleMatrix,
+				   SkScalar xpos, SkScalar hBOffset, SkScalar hTOffset, SkPath& warpedPath);
+
+		bool getK(const SkRect& glypthBound, SkPathCrossing& bCrossing, SkPathCrossing& tCrossing, 
+					SkPathMeasure& basePathMeasure, const SkMatrix& compositeMatrix, 
+					SkScalar& k1, SkScalar& hBOffset, SkScalar& hTOffset);
 
 		SkPath tSkeleton_;
 		SkPath bSkeleton_;
@@ -48,6 +57,7 @@ namespace TextArt
 
 		bool isNormalRotated_;
 		bool isSymmetric_;
+		bool isTopBased_;
 
 		SkScalar k1_;
 		bool isTop;

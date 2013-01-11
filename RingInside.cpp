@@ -22,7 +22,7 @@ protected:
 		//ring inside
 		SkRect r;
 		r.set(SkIntToScalar(0), SkIntToScalar(0),
-				SkIntToScalar(330), SkIntToScalar(80));
+				SkIntToScalar(330), SkIntToScalar(100));
 		bSkeleton.addOval(r);
 
 		warpFrame.push_back(bSkeleton);

@@ -46,6 +46,11 @@ protected:
 	{
 		return true;
 	}
+
+	virtual bool getIsTopBased() const
+	{
+		return true;
+	}
 };
 
 static SkView* MyFactory() {

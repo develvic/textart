@@ -3,7 +3,6 @@
 #include "SkTextToPathIter.h"
 #include "SkTypeface.h"
 #include "SkGeometry.h"
-#include "SkPathCrossing.h"
 
 #include <vector>
 
@@ -13,11 +12,10 @@ TextArt::EnvelopeWarp::EnvelopeWarp(const SkPath& skeleton, const SkMatrix& matr
 	: bSkeleton_(skeleton)
 	, matrix_(matrix)
 	, isNormalRotated_(false)
-//	, xWeightingMode_(XWeightingMode_Linearly)
-//	, xWeightingMode_(XWeightingMode_Interpolating)
 	, xWeightingMode_(XWeightingMode_Linearly | XWeightingMode_Interpolating)
 	, k1_(1.0)
 	, isSymmetric_(false)
+	, isTopBased_(false)
 {
 }
 
@@ -39,9 +37,9 @@ void TextArt::EnvelopeWarp::setIsSymmetric(bool isSymmetric)
 	isSymmetric_ = isSymmetric;
 }
 
-const SkRect& TextArt::EnvelopeWarp::getBounds() const
+void TextArt::EnvelopeWarp::setIsTopBased(bool isTopBased)
 {
-	return boundsRect_;
+	isTopBased_ = isTopBased;
 }
 
 SkPath TextArt::EnvelopeWarp::warp(const SkPath& path, const SkMatrix& matrix)
@@ -137,26 +135,6 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 		SkPath line;
 		line.lineTo(SkIntToScalar(100), SkIntToScalar(0));
 		SkPathMeasure   lineMeasure(line, false);
-/*
-		//calculate TopLength/BottomLength relation for Linearly mode
-		if (xWeightingMode_ & XWeightingMode_Linearly)
-		{
-			//get X-coordinate of the last point of text(in normal state)
-			SkScalar b = boundsRect_.width() + hBOffset;
-			SkScalar bl, tl;
-			SkPoint bp;
-			//get X-coordinate of the last point of text placed on Bottom line
-			bMeasure.getPosTan(b, &bp, NULL);
-			
-			//get length of Top and Bottom lines till the intersection with X-ccordinate calulated above
-			bl = getLengthTillX(bMeasure, bp.fX);
-			tl = getLengthTillX(tMeasure, bp.fX);
-			//scaling coefficient
-			k1_ = SkScalarDiv(tl, bl);
-			//adjust Top centering offset
-			hTOffset /= k1_;
-		}
-*/
 
 		SkPathCrossing bCrossing(bSkeleton_);
 		SkPathCrossing tCrossing(tSkeleton_);
@@ -167,91 +145,158 @@ SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface
 			if (glypthPathOrig)
 			{
 				SkPath glypthPath;
-				//prepare resulting transformatiom Matrix
-				SkMatrix	compositeBMatrix(scaleMartix);
-				compositeBMatrix.postTranslate(xpos + hBOffset, 0);
-				compositeBMatrix.postConcat(matrix_);
-
 				SkRect glypthBound;
 				glypthBound = (*glypthPathOrig).getBounds();
 				glypthPathOrig->offset(-glypthBound.fLeft, 0, &glypthPath);
-				glypthBound = glypthPath.getBounds();
 
-				if (!isSymmetric_)
-				{	//compuite normal at CenterX to Bottom path
-					const SkRect& tBounds = tSkeleton_.getBounds();
+				morph(bSkeleton_, bMeasure, bCrossing,
+						tSkeleton_, tMeasure, tCrossing,
+						glypthPath, lineMeasure, scaleMartix,
+						xpos, hBOffset, hTOffset, warpedPath);
 
-					SkPoint centerX[4], tCenterX[4];
-					//left normal
-					centerX[0].set(glypthBound.fLeft, +10);
-					centerX[1].set(glypthBound.fLeft, -10);
-					//right normal
-					centerX[2].set(glypthBound.fRight, +10);
-					centerX[3].set(glypthBound.fRight, -10);
-						
-					//morph normal point by Bottom skeleton
-					isTop = false;
-					morphpoints(tCenterX, centerX, 4, bMeasure, compositeBMatrix);
-					normal.moveTo(tCenterX[0]);
-					normal.lineTo(tCenterX[1]);
-					normal.moveTo(tCenterX[2]);
-					normal.lineTo(tCenterX[3]);
-
-					SkPoint bCrossR, bCrossL, tCrossL, tCrossR;
-					SkScalar bCrossDistR, bCrossDistL, tCrossDistL, tCrossDistR;
-					//get intersection between Normals and Skeletons
-					if (tCrossing.rayCrossing(tCenterX, &tCrossDistL, &tCrossL) &&
-						tCrossing.rayCrossing(&tCenterX[2], &tCrossDistR, &tCrossR) &&
-						bCrossing.rayCrossing(&tCenterX[0], &bCrossDistL, &bCrossL) &&
-						bCrossing.rayCrossing(&tCenterX[2], &bCrossDistR, &bCrossR) )
-					{
-						intersections.push_back(tCrossL);
-						intersections.push_back(tCrossR);
-						intersections.push_back(bCrossL);
-						intersections.push_back(bCrossR);
-
-						//use distance to Left on Top Skeleton for positioning Top glypthn
-						hTOffset = tCrossDistL;
-						xpos = 0;
-
-						//calulate linear coeffiction for stretching Top glypth
-						k1_ = (tCrossDistR - tCrossDistL) / (bCrossDistR - bCrossDistL);
-					}
-					else
-						k1_ = 1.0;
-				}
-				
-				isTop = false;
-				//warp Glypth by bottom line
-				SkPath bWarped;
-				morphpath(&bWarped, glypthPath, bMeasure, compositeBMatrix);
-				bWarped_.addPath(bWarped);
-
-				if (!tSkeleton_.isEmpty())
-				{
-					SkMatrix	compositeTMatrix(scaleMartix);
-					compositeTMatrix.postTranslate(xpos + hTOffset, 0);
-					compositeTMatrix.postConcat(matrix_);
-
-					//transform Glypth, 
-					SkPath lineMorphed;
-					morphpath(&lineMorphed, glypthPath, lineMeasure, scaleMartix);
-
-					isTop = true;
-					SkPath tWarped;
-					morphpath(&tWarped, glypthPath, tMeasure, compositeTMatrix);
-					tWarped_.addPath(tWarped);
-
-					weight(lineMorphed, tWarped, bWarped, &warpedPath);
-				}
-				else
-					warpedPath.addPath(bWarped_);
 			}
-
 		}
 	}
 	
 	return warpedPath;
+}
+
+void TextArt::EnvelopeWarp::morph(SkPath& bSkeleton, SkPathMeasure& bMeasure, SkPathCrossing& bCrossing,
+								SkPath& tSkeleton, SkPathMeasure& tMeasure, SkPathCrossing& tCrossing,
+								SkPath& glypthPath, SkPathMeasure& lineMeasure, SkMatrix& scaleMatrix,
+								SkScalar xpos, SkScalar hBOffset, SkScalar hTOffset, SkPath& warpedPath)
+{
+	SkRect glypthBound;
+	glypthBound = glypthPath.getBounds();
+
+	SkScalar k1 = 1.0;
+
+	if (!isSymmetric_)
+	{	
+		SkScalar hBOffsetTmp = 0.0;
+		SkScalar hTOffsetTmp = 0.0;
+
+		if (isTopBased_)
+		{
+			glypthBound.fTop = 0;
+			glypthBound.fBottom = -boundsRect_.height();
+
+			SkMatrix	compositeTMatrix(scaleMatrix);
+			compositeTMatrix.postTranslate(xpos + hTOffset, 0);
+			compositeTMatrix.postConcat(matrix_);
+
+			if ( getK(glypthBound, bCrossing, tCrossing, tMeasure, compositeTMatrix, k1, hBOffsetTmp, hTOffsetTmp) )
+			{
+				k1 = 1/k1;
+
+				hBOffset = hBOffsetTmp;
+				hTOffset = xpos + hTOffset;
+			}
+		}
+		else
+		{
+			glypthBound.fTop = -boundsRect_.height();
+			glypthBound.fBottom = 0;
+
+			SkMatrix	compositeBMatrix(scaleMatrix);
+			compositeBMatrix.postTranslate(xpos + hBOffset, 0);
+			compositeBMatrix.postConcat(matrix_);
+
+			if ( getK(glypthBound, bCrossing, tCrossing, bMeasure, compositeBMatrix, k1, hBOffsetTmp, hTOffsetTmp) )
+			{
+				//use distance to Left on Top Skeleton for positioning Top glypthn
+				hTOffset = hTOffsetTmp;
+				hBOffset = xpos + hBOffset;
+			}
+		}
+	}
+	else
+	{
+		hBOffset = xpos + hBOffset;
+		hTOffset = hBOffset;
+	}
+				
+	SkMatrix	compositeBMatrix(scaleMatrix);
+	compositeBMatrix.postTranslate(hBOffset, 0);
+	compositeBMatrix.postConcat(matrix_);
+
+	//warp Glypth by bottom line
+	k1_ = isTopBased_ ? k1 : SkIntToScalar(1);
+	isTop = false;
+	SkPath bWarped;
+	morphpath(&bWarped, glypthPath, bMeasure, compositeBMatrix);
+	bWarped_.addPath(bWarped);
+
+	if (!tSkeleton_.isEmpty())
+	{
+		SkMatrix	compositeTMatrix(scaleMatrix);
+		compositeTMatrix.postTranslate(hTOffset, 0);
+		compositeTMatrix.postConcat(matrix_);
+
+		//warp Glypth by top line
+		k1_ = !isTopBased_ ? k1 : SkIntToScalar(1);
+		isTop = true;
+		SkPath tWarped;
+		morphpath(&tWarped, glypthPath, tMeasure, compositeTMatrix);
+		tWarped_.addPath(tWarped);
+
+		//convert Glypth to Path to allow weighting
+		SkPath lineMorphed;
+		morphpath(&lineMorphed, glypthPath, lineMeasure, scaleMatrix);
+
+		weight(lineMorphed, tWarped, bWarped, &warpedPath);
+	}
+	else
+		warpedPath.addPath(bWarped_);
+}
+
+
+bool TextArt::EnvelopeWarp::getK(const SkRect& glypthBound, SkPathCrossing& bCrossing, SkPathCrossing& tCrossing, 
+								SkPathMeasure& basePathMeasure, const SkMatrix& compositeMatrix, 
+								SkScalar& k1, SkScalar& hBOffset, SkScalar& hTOffset)
+{
+		SkScalar bCut = isTopBased_ ? SkIntToScalar(-3) : SkIntToScalar(+3);
+		SkPoint centerX[4], tCenterX[4];
+		//left normal
+		centerX[0].set(glypthBound.fLeft, glypthBound.fBottom + bCut);
+		centerX[1].set(glypthBound.fLeft, glypthBound.fTop);
+		//right normal
+		centerX[2].set(glypthBound.fRight, glypthBound.fBottom + bCut);
+		centerX[3].set(glypthBound.fRight, glypthBound.fTop);
+						
+		//morph normal point by Bottom skeleton
+		isTop = isTopBased_;
+		k1_ = 1.0;
+		morphpoints(tCenterX, centerX, 4, basePathMeasure, compositeMatrix);
+		normal.moveTo(tCenterX[0]);
+		normal.lineTo(tCenterX[1]);
+		normal.moveTo(tCenterX[2]);
+		normal.lineTo(tCenterX[3]);
+
+		SkPoint bCrossR, bCrossL, tCrossL, tCrossR;
+		SkScalar bCrossDistR, bCrossDistL, tCrossDistL, tCrossDistR;
+
+		//get intersection between Normals and Skeletons
+		if (tCrossing.rayCrossing(tCenterX, &tCrossDistL, &tCrossL) &&
+			tCrossing.rayCrossing(&tCenterX[2], &tCrossDistR, &tCrossR) &&
+			bCrossing.rayCrossing(&tCenterX[0], &bCrossDistL, &bCrossL) &&
+			bCrossing.rayCrossing(&tCenterX[2], &bCrossDistR, &bCrossR) )
+		{
+			intersections.push_back(tCrossL);
+			intersections.push_back(tCrossR);
+			intersections.push_back(bCrossL);
+			intersections.push_back(bCrossR);
+
+			//calulate linear coeffiction for stretching Top glypth
+			k1 = (tCrossDistR - tCrossDistL) / (bCrossDistR - bCrossDistL);
+
+			//use distance to Left on Top Skeleton for positioning Top glypthn
+			hBOffset = bCrossDistL;
+			hTOffset = tCrossDistL;
+			return true;
+		}
+
+		return false;
 }
 
 void TextArt::EnvelopeWarp::morphpoints(SkPoint dst[], const SkPoint src[], int count,
@@ -265,10 +310,7 @@ void TextArt::EnvelopeWarp::morphpoints(SkPoint dst[], const SkPoint src[], int 
         SkVector tangent;
 
 		SkPoint iSrc = src[i];
-		if (isTop)
-		{
-			iSrc.fX = k1_ * iSrc.fX;
-		}
+		iSrc.fX = k1_ * iSrc.fX;
 
         proc(matrix, iSrc.fX, iSrc.fY, &pos);
 

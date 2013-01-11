@@ -22,7 +22,7 @@ protected:
 		//ring outside
 		SkRect r;
 		r.set(SkIntToScalar(0), SkIntToScalar(0),
-				SkIntToScalar(330), SkIntToScalar(80));
+				SkIntToScalar(330), SkIntToScalar(120));
 		bSkeleton.addOval(r, SkPath::kCCW_Direction);
 
 		warpFrame.push_back(bSkeleton);

@@ -335,21 +335,21 @@ bool SkPathCrossing::lineToLineIntersection(const SkPoint l1[2], const SkPoint l
 	const SkPoint& l2_0 = l2[0];
 	const SkPoint& l2_1 = l2[1];
 
-	double A1 = l1_1.fY - l1_0.fY;
-	double B1 = l1_0.fX - l1_1.fX;
-	double C1 = A1*l1_0.fX + B1*l1_0.fY;
+	SkScalar A1 = l1_1.fY - l1_0.fY;
+	SkScalar B1 = l1_0.fX - l1_1.fX;
+	SkScalar C1 = A1*l1_0.fX + B1*l1_0.fY;
 
-	double A2 = l2_1.fY - l2_0.fY;
-	double B2 = l2_0.fX - l2_1.fX;
-	double C2 = A2*l2_0.fX + B2*l2_0.fY;
+	SkScalar A2 = l2_1.fY - l2_0.fY;
+	SkScalar B2 = l2_0.fX - l2_1.fX;
+	SkScalar C2 = A2*l2_0.fX + B2*l2_0.fY;
 
-	double den = A1*B2 - A2*B1;
+	SkScalar den = (A1*B2 - A2*B1);
 
 	if (den == 0)
 		return false;
 
-	cross->fX = SkScalarDiv((B2*C1 - B1*C2), den);
-    cross->fY = SkScalarDiv((A1*C2 - A2*C1), den);
+	cross->fX = SkScalarDiv( SkFloatToScalar(B2*C1 - B1*C2), den );
+    cross->fY = SkScalarDiv( SkFloatToScalar(A1*C2 - A2*C1), den );
 	
 	return true;
 }

@@ -34,12 +34,14 @@ protected:
 
 	virtual bool getIsSymmetric() const {return false;}
 
+	virtual bool getIsTopBased() const {return false;}
+
 	SkPath		bSkeleton_;
 	SkPath		tSkeleton_;
 	SkPath      path_;
 
 	SkPath		origPath_;
-	SkRect		textBounds_;
+
 private:
     int fHints;
     typedef SampleView INHERITED;

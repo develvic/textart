@@ -48,9 +48,9 @@ void TextArtView::onDrawContent(SkCanvas* canvas)
 		textArt.setTopSkeleton(tSkeleton_);
 		textArt.setIsNormalRotated(getIsNormalRotated());
 		textArt.setIsSymmetric(getIsSymmetric());
+		textArt.setIsTopBased(getIsTopBased());
 		
 		path_ = textArt.warp(TEXT, typeface);
-		textBounds_ = textArt.getBounds();
 	}
 
     SkPaint paint;
@@ -98,7 +98,7 @@ void TextArtView::onDrawContent(SkCanvas* canvas)
 	canvas->drawPath(textArt.tFlattern, paint);
 	for(int i=0; i<textArt.intersections.size(); ++i)
 	{
-		canvas->drawCircle(textArt.intersections[i].fX, textArt.intersections[i].fY, 1+i/20., paint);
+		canvas->drawCircle(textArt.intersections[i].fX, textArt.intersections[i].fY, 1.5, paint);
 	}
 */
 	canvas->restore();
