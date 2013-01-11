@@ -42,17 +42,6 @@ void TextArt::EnvelopeWarp::setIsTopBased(bool isTopBased)
 	isTopBased_ = isTopBased;
 }
 
-SkPath TextArt::EnvelopeWarp::warp(const SkPath& path, const SkMatrix& matrix)
-{
-	SkPath warpedPath;
-
-	SkPathMeasure measure(bSkeleton_, false);
-
-	morphpath(&warpedPath, path, measure, matrix);
-
-	return warpedPath;
-}
-
 SkPath TextArt::EnvelopeWarp::warp(const std::string& text, SkTypeface* typeface)
 {
 	SkPath				warpedPath;
